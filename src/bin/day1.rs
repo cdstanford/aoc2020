@@ -1,7 +1,7 @@
 /*
     Advent of Code 2020
-    Day 1 Solution
     Caleb Stanford
+    Day 1 Solution
     2020-12-05
 */
 
@@ -19,7 +19,10 @@ fn file_to_vec(filepath: &str) -> Vec<String> {
     reader.lines().map(|x| x.unwrap()).collect()
 }
 fn file_to_int_vec(filepath: &str) -> Vec<usize> {
-    file_to_vec(filepath).into_iter().map(|x| x.parse::<usize>().unwrap()).collect()
+    file_to_vec(filepath)
+        .into_iter()
+        .map(|x| x.parse::<usize>().unwrap())
+        .collect()
 }
 
 /* Solution */
@@ -28,7 +31,7 @@ fn find_sum2(nums: &[usize], target: usize) -> (usize, usize) {
     let mut seen = HashSet::new();
     for &num in nums {
         if seen.contains(&(target - num)) {
-            return (target - num, num)
+            return (target - num, num);
         }
         seen.insert(num);
     }
@@ -44,7 +47,7 @@ fn find_sum3(nums: &[usize], target: usize) -> (usize, usize, usize) {
     }
     for &x3 in nums {
         if let Some(&(x1, x2)) = seen_sums.get(&(target - x3)) {
-            return (x1, x2, x3)
+            return (x1, x2, x3);
         }
     }
     panic!("Did not find sum :(");
