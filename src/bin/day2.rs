@@ -21,13 +21,8 @@ fn parse_input_line(line: &str) -> PasswordInfo {
     let lb: usize = mat.get(1).unwrap().as_str().parse().unwrap();
     let ub: usize = mat.get(2).unwrap().as_str().parse().unwrap();
     let ch: char = mat.get(3).unwrap().as_str().parse().unwrap();
-    let pass: AsciiString = mat
-        .get(4)
-        .unwrap()
-        .as_str()
-        .as_ascii_str()
-        .unwrap()
-        .to_owned();
+    let pass: AsciiString =
+        mat.get(4).unwrap().as_str().as_ascii_str().unwrap().to_owned();
     (lb, ub, ch, pass)
 }
 
