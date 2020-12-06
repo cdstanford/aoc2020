@@ -52,13 +52,41 @@ fn solve_part2(data: &[PasswordInfo]) -> usize {
             let pass: &AsciiStr = &dat.3;
             let i1: usize = dat.0 - 1;
             let i2: usize = dat.1 - 1;
-            pass[i1] == dat.2 || pass[i2] == dat.2
+            (pass[i1] == dat.2) ^ (pass[i2] == dat.2)
         })
         .count()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn ascii(raw: &str) -> AsciiString {
+        AsciiString::from_ascii(raw).unwrap()
+    }
+
+    fn example_data() -> Vec<PasswordInfo> {
+        vec![
+            (1, 3, 'a', ascii("abcde")),
+            (1, 3, 'b', ascii("cdefg")),
+            (2, 9, 'c', ascii("ccccccccc")),
+        ]
+    }
+
+    #[test]
+    fn test_part_1() {
+        assert_eq!(solve_part1(&example_data()), 2);
+    }
+
+    #[test]
+    fn test_part_2() {
+        assert_eq!(solve_part2(&example_data()), 1);
+    }
+}
+
 fn main() {
     let file = File::open("input/day2.txt").unwrap();
+    // let file = File::open("input/day2_test.txt").unwrap();
     let reader = BufReader::new(file);
     let data = reader
         .lines()
