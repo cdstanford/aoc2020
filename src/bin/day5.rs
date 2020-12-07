@@ -2,7 +2,7 @@
     Advent of Code 2020
     Caleb Stanford
     Day 5 Solution
-    2020-12-06
+    2020-12-07
 */
 
 use aoc2020::util::file_to_vec;
