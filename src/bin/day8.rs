@@ -104,11 +104,9 @@ impl State {
     fn execute(&mut self) {
         // Run until we halt or detect a loop
         while self.is_running() {
-            // Debugging
             // println!("{}", self);
             self.step();
         }
-        // Useful debugging
         // println!("{}", self);
     }
 }
