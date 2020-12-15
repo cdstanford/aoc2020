@@ -4,19 +4,25 @@
     Utilities
 */
 
+use std::fmt::Debug;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
+use std::str::FromStr;
 
 // Convert a file to a vector of its lines
-pub fn file_to_vec(filepath: &str) -> Vec<String> {
-    let file = File::open(filepath).unwrap();
-    let reader = BufReader::new(file);
-    reader.lines().map(|maybe_line| maybe_line.unwrap()).collect()
-}
-pub fn file_to_vec_usize(filepath: &str) -> Vec<usize> {
+pub fn file_to_vec_parsed<T>(filepath: &str) -> Vec<T>
+where
+    T: FromStr,
+    <T as FromStr>::Err: Debug,
+{
     let file = File::open(filepath).unwrap();
     let reader = BufReader::new(file);
     reader.lines().map(|line| line.unwrap().parse().unwrap()).collect()
+}
+
+// Simple string version
+pub fn file_to_vec(filepath: &str) -> Vec<String> {
+    file_to_vec_parsed(filepath)
 }
 
 // Version that is terminated with an empty line ("")

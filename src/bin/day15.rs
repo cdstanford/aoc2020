@@ -12,7 +12,7 @@
     Time (--release): 0m3.466s
 */
 
-use aoc2020::util::file_to_vec_usize;
+use aoc2020::util::file_to_vec_parsed;
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -63,7 +63,7 @@ fn solve_game(start_nums: &[usize], turns: usize) -> usize {
 }
 
 fn main() {
-    let start_nums: Vec<usize> = file_to_vec_usize("input/day15.txt");
+    let start_nums: Vec<usize> = file_to_vec_parsed("input/day15.txt");
 
     println!("Part 1 Answer: {}", solve_game(&start_nums, 2020));
     println!("Part 2 Answer: {}", solve_game(&start_nums, 30000000));
