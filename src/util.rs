@@ -13,6 +13,11 @@ pub fn file_to_vec(filepath: &str) -> Vec<String> {
     let reader = BufReader::new(file);
     reader.lines().map(|maybe_line| maybe_line.unwrap()).collect()
 }
+pub fn file_to_vec_usize(filepath: &str) -> Vec<usize> {
+    let file = File::open(filepath).unwrap();
+    let reader = BufReader::new(file);
+    reader.lines().map(|line| line.unwrap().parse().unwrap()).collect()
+}
 
 // Version that is terminated with an empty line ("")
 pub fn file_to_vec_el(filepath: &str) -> Vec<String> {
