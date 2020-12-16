@@ -38,12 +38,13 @@ pub fn line_to_words(line: &str) -> Vec<String> {
 }
 
 // Parse an iterator (e.g. result of split) of length 2 into a tuple
-pub fn iter_to_pair<T, I>(elems: I) -> (T, T)
+pub fn iter_to_pair<T, I>(mut elems: I) -> (T, T)
 where
-    T: Copy,
     I: Iterator<Item = T>,
+    T: Debug + PartialEq,
 {
-    let v: Vec<T> = elems.collect();
-    assert_eq!(v.len(), 2);
-    (v[0], v[1])
+    let elem1 = elems.next().unwrap();
+    let elem2 = elems.next().unwrap();
+    assert_eq!(elems.next(), None);
+    (elem1, elem2)
 }

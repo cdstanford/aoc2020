@@ -13,8 +13,7 @@
 */
 
 use aoc2020::util::{file_to_vec, iter_to_pair};
-use z3::ast::Bool;
-use z3::{Config, Context, SatResult, Solver};
+use z3::{ast::Bool, Config, Context, SatResult, Solver};
 
 /*
     Struct to capture range constraints (e.g. 1-5 or 10-20 or 50-60)
