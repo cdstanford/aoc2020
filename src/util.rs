@@ -36,3 +36,14 @@ pub fn file_to_vec_el(filepath: &str) -> Vec<String> {
 pub fn line_to_words(line: &str) -> Vec<String> {
     line.split_whitespace().map(|s| s.to_string()).collect()
 }
+
+// Parse an iterator (e.g. result of split) of length 2 into a tuple
+pub fn iter_to_pair<T, I>(elems: I) -> (T, T)
+where
+    T: Copy,
+    I: Iterator<Item = T>,
+{
+    let v: Vec<T> = elems.collect();
+    assert_eq!(v.len(), 2);
+    (v[0], v[1])
+}
