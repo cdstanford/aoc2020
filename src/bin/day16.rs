@@ -5,17 +5,20 @@
     2020-12-16
 
     Start time: 11:41am
-    Solved part 1: 1:41pm (2hrs)
-    Solved part 2:
-    Code cleanup:
+    Solved part 1: 1:41pm (2 hr)
+    Solved part 2: 4:25pm (2 hr, 44 min)
+    Code cleanup: 4:55pm
 
-    Time (--release):
+    Time (--release): 0m0.082s
 */
 
 use aoc2020::util::{file_to_vec, iter_to_pair};
-use std::fmt;
+use z3::ast::Bool;
+use z3::{Config, Context, SatResult, Solver};
 
 /*
+    Struct to capture range constraints (e.g. 1-5 or 10-20 or 50-60)
+
     Inspecting the input, all numbers are small (between 1 and 999), and the
     range constraint boundaries are statically known.
     Therefore the best way to store range constraints (unions of ranges) should
@@ -53,41 +56,159 @@ impl Ranges {
         result
     }
 }
-// Need to implement Debug for printing arrays because of no const generics yet
-impl fmt::Debug for Ranges {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for &val_bool in &self.set[..] {
-            let val_str = if val_bool { "1" } else { "0" };
-            f.write_str(val_str)?;
+
+/*
+    Bipartite matching finder (for part 2)
+
+    Input: a square Boolean matrix of which inputs can match with which outputs
+    Output: A list of the output indices corresponding to each input index.
+
+    We outsource the constraint solving to Z3.
+*/
+fn find_matching(matchable: &[Vec<bool>]) -> Vec<usize> {
+    let n = matchable.len();
+    let cfg = Config::new();
+    let ctx = Context::new(&cfg);
+    let solver = Solver::new(&ctx);
+
+    // One variable per row, column (possible match)
+    let vars: Vec<Vec<_>> = (0..20)
+        .map(|i| {
+            (0..20)
+                .map(|j| Bool::new_const(&ctx, format!("match_{}_{}", i, j)))
+                .collect()
+        })
+        .collect();
+    let var_refs: Vec<Vec<_>> =
+        vars.iter().map(|vars_i| vars_i.iter().collect()).collect();
+    assert_eq!(vars.len(), n);
+    assert_eq!(var_refs.len(), n);
+
+    // Variables conform to matchable constraints
+    for i in 0..n {
+        for j in 0..n {
+            if !matchable[i][j] {
+                solver.assert(&var_refs[i][j].not());
+            }
         }
-        Ok(())
+    }
+
+    // At least one match per row
+    for var_row in &var_refs {
+        solver.assert(&Bool::or(&ctx, var_row));
+    }
+
+    // At most one match per column
+    for j in 0..n {
+        for i1 in 0..n {
+            for i2 in (i1 + 1)..n {
+                let both_i1_i2 =
+                    Bool::and(&ctx, &[var_refs[i1][j], var_refs[i2][j]]);
+                solver.assert(&both_i1_i2.not());
+            }
+        }
+    }
+
+    // Solve
+    // println!("Solver: {}", solver);
+    match solver.check() {
+        SatResult::Sat => {
+            let model = solver.get_model().unwrap();
+            // println!("Model: {:?}", model);
+            vars.iter()
+                .map(|var_row| {
+                    let matches: Vec<_> = var_row
+                        .iter()
+                        .enumerate()
+                        .filter(|&(_i, var)| {
+                            model.eval(var).unwrap().as_bool().unwrap()
+                        })
+                        .map(|(i, _var)| i)
+                        .collect();
+                    assert_eq!(matches.len(), 1);
+                    matches[0]
+                })
+                .collect()
+        }
+        SatResult::Unsat => {
+            let unsat_core = solver.get_unsat_core();
+            println!("Unsat core: {:?}", unsat_core);
+            panic!("Constraints were unsatisfiable");
+        }
+        SatResult::Unknown => {
+            panic!("Z3 failed to solve constraints");
+        }
     }
 }
 
 /*
-    Solutions
+    Part 1
 */
+fn merge_constraints(fields: &[(String, Ranges)]) -> Ranges {
+    fields
+        .iter()
+        .map(|(_field_name, r)| r)
+        .fold(Ranges::new_empty(), |r1, r2| r1.union(r2))
+}
 fn invalid_fields(ticket: &[usize], constraints: &Ranges) -> Vec<usize> {
     ticket.iter().filter(|&&n| !constraints.contains(n)).cloned().collect()
 }
 fn solve_part1(fields: &[(String, Ranges)], tickets: &[Vec<usize>]) -> usize {
-    let constraints = fields
-        .iter()
-        .map(|(_field_name, ranges)| ranges)
-        .fold(Ranges::new_empty(), |r1, r2| r1.union(r2));
-
+    let constraints = merge_constraints(fields);
     tickets.iter().flat_map(|ticket| invalid_fields(ticket, &constraints)).sum()
-}
-fn solve_part2(
-    _fields: &[(String, Ranges)],
-    _tickets: &[Vec<usize>],
-    _your_ticket: &[usize],
-) -> usize {
-    0
 }
 
 /*
-    Parsing help
+    Part 2
+*/
+fn field_matches(
+    valid_tickets: &[Vec<usize>],
+    index: usize,
+    constraints: &Ranges,
+) -> bool {
+    for ticket in valid_tickets {
+        if !constraints.contains(ticket[index]) {
+            return false;
+        }
+    }
+    true
+}
+fn solve_part2(
+    fields: &[(String, Ranges)],
+    tickets: &[Vec<usize>],
+    your_ticket: &[usize],
+) -> usize {
+    let constraints = merge_constraints(fields);
+    let valid_tickets: Vec<Vec<usize>> = tickets
+        .iter()
+        .filter(|ticket| invalid_fields(ticket, &constraints).is_empty())
+        .cloned()
+        .collect();
+    let mut field_possibilities = vec![vec![]; 20];
+    for field in 0..20 {
+        for index in 0..20 {
+            field_possibilities[field].push(field_matches(
+                &valid_tickets,
+                index,
+                &fields[field].1,
+            ));
+        }
+    }
+    // Find bipartite matching
+    // println!("Matchable: {:?}", field_possibilities);
+    let matching = find_matching(&field_possibilities);
+    println!("Part 2 Matching: {:?}", matching);
+    // Find the six fields starting with "departure" and compute answer
+    let departure_fields: Vec<usize> = (0..20)
+        .filter(|&f| fields[f].0.split(' ').next().unwrap() == "departure")
+        .map(|f| matching[f])
+        .collect();
+    assert_eq!(departure_fields.len(), 6);
+    departure_fields.iter().map(|&f| your_ticket[f]).product()
+}
+
+/*
+    Parsing and entrypoint
 */
 fn parse_field(line: &str) -> (String, Ranges) {
     let (field_name, split0) = iter_to_pair(line.split(": "));
@@ -109,10 +230,6 @@ fn parse_ticket(line: &str) -> Vec<usize> {
     assert_eq!(result.len(), 20);
     result
 }
-
-/*
-    Entrypoint
-*/
 fn main() {
     let lines = file_to_vec("input/day16.txt");
 

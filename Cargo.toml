@@ -9,3 +9,4 @@ edition = "2018"
 [dependencies]
 ascii = "1.0.0"
 regex = "1.4.2"
+z3 = "0.9.0"
