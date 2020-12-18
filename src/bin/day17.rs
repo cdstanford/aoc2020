@@ -99,6 +99,7 @@ impl LifeGrid {
     }
     // Parse problem input
     fn parse_2d(lines: &[String], dimension: usize) -> Self {
+        assert!(dimension >= 2);
         let mut grid = Self::new(dimension);
         for (i, row) in lines.iter().enumerate() {
             for (j, ch) in row.chars().enumerate() {
