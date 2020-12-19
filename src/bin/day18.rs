@@ -5,11 +5,11 @@
     2020-12-18
 
     Start time: 6:11pm
-    Solved part 1: 7:21pm
-    Solved part 2:
+    Solved part 1: 7:21pm (1 hr, 10 min)
+    Solved part 2: 8:31pm (1 hr, 10 min)
     Code cleanup:
 
-    Time (--release):
+    Time (--release): 0m0.051s
 */
 
 use aoc2020::util::file_to_vec_parsed;
@@ -17,14 +17,19 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 
 /*
-    Syntax:
-        Binary operations
+    I solved this by defining expressions to be sequences of tokens
+    (including parentheses) and evaluating left-to-right using a stack.
+    Using this method it is tricky to think of the correct state to store
+    during evaluation. There should be a more elegant solution, perhaps
+    by extracting the parse tree before evaluation or by using libraries which
+    are dedicated to parsing.
+
+    The following data types define the syntax:
+        Binary operations (plus and times)
         Tokens (operations, parens, or numbers)
         Expressions (parsable from strings)
-
-    Expressions implement the desired evaluation logic using a stack.
 */
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 enum BinOp {
     Plus,
     Times,
@@ -77,7 +82,7 @@ impl FromStr for Expression {
     }
 }
 impl Expression {
-    fn eval(&self) -> usize {
+    fn eval_part1(&self) -> usize {
         // Parsing state consists of a value so far and maybe a pending operation.
         // We start with an implicit "0 +" to simplify things.
         let mut value = 0;
@@ -112,14 +117,83 @@ impl Expression {
         assert!(stack.is_empty());
         value
     }
+    fn eval_part2(&self) -> usize {
+        // Parsing state consists of a product so far, a sum so far (in the
+        // latest group), and whether or not an operation is pending.
+        // We don't need to know whether the operation is + or * because
+        // we implicitly interpret * as "* 0 +". Similarly, our initial
+        // state will have product 1, and sum so far 0 with a pending +.
+        let mut state_prod = 1;
+        let mut state_sum = 0;
+        let mut pending = true;
+        let mut stack: Vec<(usize, usize)> = Vec::new();
+        for &token in &self.tokens {
+            // println!(
+            //     ">> state: {:?} {} {} {}",
+            //     stack, state_prod, state_sum, pending
+            // );
+            // println!(">> reading: {:?}", token);
+            match token {
+                Token::LParen => {
+                    assert!(pending);
+                    stack.push((state_prod, state_sum));
+                    state_prod = 1;
+                    state_sum = 0;
+                    pending = true;
+                }
+                Token::RParen => {
+                    assert!(!pending);
+                    assert!(!stack.is_empty());
+                    let (prev_prod, prev_sum) = stack.pop().unwrap();
+                    state_sum = prev_sum + (state_prod * state_sum);
+                    state_prod = prev_prod;
+                }
+                Token::Op(op) => {
+                    assert!(!pending);
+                    if op == BinOp::Times {
+                        state_prod *= state_sum;
+                        state_sum = 0;
+                    }
+                    pending = true;
+                }
+                Token::Num(n) => {
+                    assert!(pending);
+                    state_sum += n;
+                    pending = false;
+                }
+            }
+        }
+        // println!(
+        //     ">> final state: {:?} {} {} {}",
+        //     stack, state_prod, state_sum, pending
+        // );
+        assert!(!pending);
+        assert!(stack.is_empty());
+        // println!("Result: {}", state_prod * state_sum);
+        state_prod * state_sum
+    }
 }
 
 fn solve_part1(input: &[Expression]) -> usize {
-    input.iter().map(|e| e.eval()).sum()
+    input.iter().map(|e| e.eval_part1()).sum()
 }
 
-fn solve_part2(_input: &[Expression]) -> usize {
-    0
+#[cfg(test)]
+fn assert_part2(raw: &str, expected: usize) {
+    assert_eq!(Expression::from_str(raw).unwrap().eval_part2(), expected);
+}
+#[test]
+fn test_part2() {
+    assert_part2("2 + 3", 5);
+    assert_part2("2 * 3", 6);
+    assert_part2("2 + 2 + 3", 7);
+    assert_part2("2 + 2 * 3", 12);
+    assert_part2("2 * 3 + 2", 10);
+    assert_part2("6 * (2 + 2)", 24);
+}
+
+fn solve_part2(input: &[Expression]) -> usize {
+    input.iter().map(|e| e.eval_part2()).sum()
 }
 
 fn main() {
