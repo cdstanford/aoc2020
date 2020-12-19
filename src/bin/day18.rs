@@ -7,7 +7,6 @@
     Start time: 6:11pm
     Solved part 1: 7:21pm (1 hr, 10 min)
     Solved part 2: 8:31pm (1 hr, 10 min)
-    Code cleanup:
 
     Time (--release): 0m0.051s
 */
@@ -174,22 +173,41 @@ impl Expression {
     }
 }
 
-fn solve_part1(input: &[Expression]) -> usize {
-    input.iter().map(|e| e.eval_part1()).sum()
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_part1(raw: &str, expected: usize) {
+        assert_eq!(Expression::from_str(raw).unwrap().eval_part1(), expected);
+    }
+
+    #[test]
+    fn test_part1() {
+        assert_part1("2 + 3", 5);
+        assert_part1("2 * 3", 6);
+        assert_part1("2 + 2 + 3", 7);
+        assert_part1("2 + 2 * 3", 12);
+        assert_part1("2 * 3 + 2", 8);
+        assert_part1("6 * (2 + 2)", 24);
+    }
+
+    fn assert_part2(raw: &str, expected: usize) {
+        assert_eq!(Expression::from_str(raw).unwrap().eval_part2(), expected);
+    }
+
+    #[test]
+    fn test_part2() {
+        assert_part2("2 + 3", 5);
+        assert_part2("2 * 3", 6);
+        assert_part2("2 + 2 + 3", 7);
+        assert_part2("2 + 2 * 3", 12);
+        assert_part2("2 * 3 + 2", 10);
+        assert_part2("6 * (2 + 2)", 24);
+    }
 }
 
-#[cfg(test)]
-fn assert_part2(raw: &str, expected: usize) {
-    assert_eq!(Expression::from_str(raw).unwrap().eval_part2(), expected);
-}
-#[test]
-fn test_part2() {
-    assert_part2("2 + 3", 5);
-    assert_part2("2 * 3", 6);
-    assert_part2("2 + 2 + 3", 7);
-    assert_part2("2 + 2 * 3", 12);
-    assert_part2("2 * 3 + 2", 10);
-    assert_part2("6 * (2 + 2)", 24);
+fn solve_part1(input: &[Expression]) -> usize {
+    input.iter().map(|e| e.eval_part1()).sum()
 }
 
 fn solve_part2(input: &[Expression]) -> usize {
@@ -199,6 +217,6 @@ fn solve_part2(input: &[Expression]) -> usize {
 fn main() {
     let input: Vec<Expression> = file_to_vec_parsed("input/day18.txt");
 
-    println!("Solve Part 1: {}", solve_part1(&input));
-    println!("Solve Part 2: {}", solve_part2(&input));
+    println!("Part 1 Answer: {}", solve_part1(&input));
+    println!("Part 2 Answer: {}", solve_part2(&input));
 }
