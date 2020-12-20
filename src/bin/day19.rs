@@ -2,9 +2,9 @@
     Advent of Code 2020
     Caleb Stanford
     Day 19 Solution
-    2020-12-19
+    2020-12-19 to 2020-12-20
 
-    Time (--release):
+    Time (--release): 5m16.695s
 */
 
 use aoc2020::util::file_to_vec;
@@ -12,11 +12,57 @@ use regex::Regex;
 use std::collections::{HashMap, HashSet};
 
 /*
+    SmartRegexMatcher
+
     Specialized matcher designed for matching small strings against a set of
-    inter-defined regexes: each can be a union or a concat of two other regexes
-    in the set.
-    Relies on heavy caching of match results.
+    inter-defined regexes (rules): each inter-defined regex can be a union or
+    a concat of two other regexes in the set.
+
+    This solution is not very efficient (5 minutes whereas there should be
+    a solution that works in seconds), but it works.
+
+    The assumption here is that it would be inefficient to simply expand out
+    regex 0 into a single regex recursively, as the expression tree might
+    contain the same regex many times (this is true even without loops);
+    similar to how a Boolean formula can be exponentially larger than a Boolean
+    circuit, in the worst case we might get a regex of size 2^m if we started
+    from m inter-defined regex rules.
+
+    # Part 1 solution and complexity
+    Our idea is to heavily rely on caching of match results.
+    For each string we are asked to match, we recursively call match on
+    substrings as appropriate, but as we do so we keep a memoization cache
+    of the match results for each (regex, start index, end index) triple.
+    As a result we are guaranteed to recurse only once for each such tuple,
+    which bounds the number of cache misses by O(n^2 m), and since each cache
+    miss does O(n) work (for the Concat case, recursing on all O(n) splits),
+    the worst-case time complexity is given by
+        O(n^3 m),
+    where n is the length of the string and m is the number of regexes (rules).
+
+    # Part 2 solution and complexity
+    For part 2, to deal with loops, we just need to additionally track (as we
+    recurse on regexes and substrings) the call stack (as a set) of which
+    (regex, start index, end index) triples we have seen. If we attempt to
+    recurse on a triple that is already in the call stack set, we know that
+    this is a loop and there is no need to explore it. Basically, each string
+    which matches must have a match that does not contain any loops in the match
+    tree. Keeping this additional information doesn't add any time overhead
+    beyond O(1) for each recursive call (to update the call stack before/after),
+    so the complexity is still
+        O(n^3 m).
+
+    # Concrete time complexity
+    With the worst-case of a string of length 100 and 130 rules, this gives
+        130,000,000
+    operations per match.
+
+    # Space complexity
+    Sicne we reset the cache after each string match, the memory complexity
+    (cache size) is O(n^2 m) for part 1. For part 2, there is no a priori bound
+    on the size of the call stack but in practice it seems to be low enough.
 */
+
 type RegexId = u16;
 #[derive(Clone, Copy, Debug)]
 enum RegexCases {
@@ -25,6 +71,7 @@ enum RegexCases {
     Noop(RegexId),
     Char(char),
 }
+
 #[derive(Default)]
 struct SmartRegexMatcher {
     regex_defs: HashMap<RegexId, RegexCases>,
@@ -53,7 +100,7 @@ impl SmartRegexMatcher {
         self.debug = true;
     }
 
-    // Debug info
+    /* Debug info */
     fn reset_debug_info(&mut self) {
         self.cache_hits = 0;
         self.cache_misses = 0;
@@ -138,9 +185,18 @@ impl SmartRegexMatcher {
         self.call_stack = HashSet::new();
         result
     }
+
+    /* Answer */
+    fn count_regex0_matches(&mut self, msgs: &[String]) -> usize {
+        msgs.iter().map(|s| self.eval(0, s)).filter(|&s| s).count()
+    }
 }
 
-fn parse_input(input_filepath: &str) -> (SmartRegexMatcher, Vec<String>) {
+/*
+    Input parsing and parts 1+2 solutions
+*/
+
+fn parse_input(input_lines: &[String]) -> (SmartRegexMatcher, Vec<String>) {
     // Regexes to parse input
     // (Better idea: use a proper parsing library)
     let rule = Regex::new(r"^(\d*): (.*)$").unwrap();
@@ -151,11 +207,11 @@ fn parse_input(input_filepath: &str) -> (SmartRegexMatcher, Vec<String>) {
         Regex::new(r"^(\d*) (\d*) \| (\d*) (\d*)$").unwrap();
     let msg = Regex::new(r"^([ab]*)$").unwrap();
 
-    // Parse input
+    // Collect lines into a SmartRegexMatcher and list of messages
     let mut matcher = SmartRegexMatcher::new();
     let mut msgs: Vec<String> = Vec::new();
     let mut first_part = true;
-    for line in &file_to_vec(input_filepath) {
+    for line in input_lines {
         if let Some(caps) = rule.captures(line) {
             assert!(first_part);
             assert_eq!(caps.len(), 3);
@@ -215,32 +271,218 @@ fn parse_input(input_filepath: &str) -> (SmartRegexMatcher, Vec<String>) {
     (matcher, msgs)
 }
 
-fn solve_part1() -> usize {
-    let (mut matcher, msgs) = parse_input("input/day19.txt");
+fn solve_part1(input_lines: &[String]) -> usize {
+    let (mut matcher, msgs) = parse_input(input_lines);
     matcher.set_debug();
-    msgs.iter().map(|s| matcher.eval(0, s)).filter(|&s| s).count()
+    matcher.count_regex0_matches(&msgs)
 }
 
-fn solve_part2() -> usize {
-    let (mut matcher, _msgs) = parse_input("input/day19.txt");
+fn solve_part2(input_lines: &[String]) -> usize {
+    let (mut matcher, msgs) = parse_input(input_lines);
+    matcher.set_debug();
+
     // Additional rules:
     //     8: 42 | 42 8
     //     11: 42 31 | 42 11 31
     matcher.allow_loops();
     matcher.add_regex(8, RegexCases::Union(42, 208));
-    matcher.add_regex(208, RegexCases::Union(42, 8));
+    matcher.add_regex(208, RegexCases::Concat(42, 8));
     matcher.add_regex(11, RegexCases::Union(211, 411));
-    matcher.add_regex(211, RegexCases::Union(42, 31));
-    matcher.add_regex(411, RegexCases::Union(42, 611));
-    matcher.add_regex(611, RegexCases::Union(11, 31));
+    matcher.add_regex(211, RegexCases::Concat(42, 31));
+    matcher.add_regex(411, RegexCases::Concat(42, 611));
+    matcher.add_regex(611, RegexCases::Concat(11, 31));
 
-    matcher.set_debug();
-    // Not working yet
-    // msgs.iter().map(|s| matcher.eval(0, s)).filter(|&s| s).count()
-    0
+    matcher.count_regex0_matches(&msgs)
+}
+
+/*
+    Tests and entrypoint
+*/
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::iter::once;
+
+    struct Example {
+        rules: &'static [&'static str],
+        msgs: &'static [&'static str],
+        loops: bool,
+        expect: usize,
+    }
+    impl Example {
+        fn check(&self) {
+            println!(
+                "===== Test with {} rules, {} msgs, loops: {}, expected: {}",
+                self.rules.len(),
+                self.msgs.len(),
+                self.loops,
+                self.expect
+            );
+            let lines: Vec<_> = self
+                .rules
+                .iter()
+                .chain(once(&""))
+                .chain(self.msgs.iter())
+                .map(|s| s.to_string())
+                .collect();
+            let (mut matcher, msgs) = parse_input(&lines);
+            matcher.set_debug();
+            if self.loops {
+                matcher.allow_loops();
+            }
+            let ans = matcher.count_regex0_matches(&msgs);
+            assert_eq!(ans, self.expect)
+        }
+    }
+
+    const EX1: Example = Example {
+        rules: &["0: 1 2", r#"1: "a""#, "2: 1 3 | 3 1", r#"3: "b""#],
+        msgs: &["aab", "aba", "bba", "bab", "bbb", "aab"],
+        loops: false,
+        expect: 3,
+    };
+    const EX2: Example = Example {
+        rules: &[
+            "0: 4 10",
+            "10: 1 5",
+            "1: 2 3 | 3 2",
+            "2: 4 4 | 5 5",
+            "3: 4 5 | 5 4",
+            r#"4: "a""#,
+            r#"5: "b""#,
+        ],
+        msgs: &["ababbb", "bababa", "abbbab", "aaabbb", "aaaabbb"],
+        loops: false,
+        expect: 2,
+    };
+    const EX3: Example = Example {
+        rules: &[
+            "42: 9 14 | 10 1",
+            "9: 14 27 | 1 26",
+            "10: 23 14 | 28 1",
+            r#"1: "a""#,
+            "11: 42 31",
+            "5: 1 14 | 15 1",
+            "19: 14 1 | 14 14",
+            "12: 24 14 | 19 1",
+            "16: 15 1 | 14 14",
+            "31: 14 17 | 1 13",
+            "6: 14 14 | 1 14",
+            "2: 1 24 | 14 4",
+            "0: 8 11",
+            "13: 14 3 | 1 12",
+            "15: 1 | 14",
+            "17: 14 2 | 1 7",
+            "23: 25 1 | 22 14",
+            "28: 16 1",
+            "4: 1 1",
+            "20: 14 14 | 1 15",
+            "3: 5 14 | 16 1",
+            "27: 1 6 | 14 18",
+            r#"14: "b""#,
+            "21: 14 1 | 1 14",
+            "25: 1 1 | 1 14",
+            "22: 14 14",
+            "8: 42",
+            "26: 14 22 | 1 20",
+            "18: 15 15",
+            "7: 14 5 | 1 21",
+            "24: 14 1",
+        ],
+        msgs: &[
+            "abbbbbabbbaaaababbaabbbbabababbbabbbbbbabaaaa",
+            "bbabbbbaabaabba",
+            "babbbbaabbbbbabbbbbbaabaaabaaa",
+            "aaabbbbbbaaaabaababaabababbabaaabbababababaaa",
+            "bbbbbbbaaaabbbbaaabbabaaa",
+            "bbbababbbbaaaaaaaabbababaaababaabab",
+            "ababaaaaaabaaab",
+            "ababaaaaabbbaba",
+            "baabbaaaabbaaaababbaababb",
+            "abbbbabbbbaaaababbbbbbaaaababb",
+            "aaaaabbaabaaaaababaa",
+            "aaaabbaaaabbaaa",
+            "aaaabbaabbaaaaaaabbbabbbaaabbaabaaa",
+            "babaaabbbaaabaababbaabababaaab",
+            "aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba",
+        ],
+        loops: false,
+        expect: 3,
+    };
+
+    #[test]
+    fn test_part1() {
+        EX1.check();
+        EX2.check();
+        EX3.check();
+    }
+
+    const EX4: Example = Example {
+        rules: &[
+            "8: 42 | 108",
+            "108: 42 8",
+            "11: 42 31 | 42 111",
+            "111: 11 31",
+            "42: 9 14 | 10 1",
+            "9: 14 27 | 1 26",
+            "10: 23 14 | 28 1",
+            r#"1: "a""#,
+            "5: 1 14 | 15 1",
+            "19: 14 1 | 14 14",
+            "12: 24 14 | 19 1",
+            "16: 15 1 | 14 14",
+            "31: 14 17 | 1 13",
+            "6: 14 14 | 1 14",
+            "2: 1 24 | 14 4",
+            "0: 8 11",
+            "13: 14 3 | 1 12",
+            "15: 1 | 14",
+            "17: 14 2 | 1 7",
+            "23: 25 1 | 22 14",
+            "28: 16 1",
+            "4: 1 1",
+            "20: 14 14 | 1 15",
+            "3: 5 14 | 16 1",
+            "27: 1 6 | 14 18",
+            r#"14: "b""#,
+            "21: 14 1 | 1 14",
+            "25: 1 1 | 1 14",
+            "22: 14 14",
+            "26: 14 22 | 1 20",
+            "18: 15 15",
+            "7: 14 5 | 1 21",
+            "24: 14 1",
+        ],
+        msgs: &[
+            "abbbbbabbbaaaababbaabbbbabababbbabbbbbbabaaaa",
+            "bbabbbbaabaabba",
+            "babbbbaabbbbbabbbbbbaabaaabaaa",
+            "aaabbbbbbaaaabaababaabababbabaaabbababababaaa",
+            "bbbbbbbaaaabbbbaaabbabaaa",
+            "bbbababbbbaaaaaaaabbababaaababaabab",
+            "ababaaaaaabaaab",
+            "ababaaaaabbbaba",
+            "baabbaaaabbaaaababbaababb",
+            "abbbbabbbbaaaababbbbbbaaaababb",
+            "aaaaabbaabaaaaababaa",
+            "aaaabbaaaabbaaa",
+            "aaaabbaabbaaaaaaabbbabbbaaabbaabaaa",
+            "babaaabbbaaabaababbaabababaaab",
+            "aabbbbbaabbbaaaaaabbbbbababaaaaabbaaabba",
+        ],
+        loops: true,
+        expect: 12,
+    };
+
+    #[test]
+    fn test_part2() {
+        EX4.check();
+    }
 }
 
 fn main() {
-    println!("Part 1 Answer: {}", solve_part1());
-    println!("Part 2 Answer: {}", solve_part2());
+    let input_lines = file_to_vec("input/day19.txt");
+    println!("Part 1 Answer: {}", solve_part1(&input_lines));
+    println!("Part 2 Answer: {}", solve_part2(&input_lines));
 }
