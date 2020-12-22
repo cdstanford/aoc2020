@@ -2,9 +2,9 @@
     Advent of Code 2020
     Caleb Stanford
     Day 20 Solution
-    2020-12-20
+    2020-12-20 -- 2020-12-22
 
-    Time (--release):
+    Time (--release): 0m0.055s
 */
 
 use aoc2020::util::file_to_vec;
@@ -75,7 +75,8 @@ struct Tile {
     grid: Vec<Vec<bool>>, // len x len grid
     times_reoriented: usize,
 }
-const MAX_TILE_LEN_DISPLAY: usize = 25;
+const TILE_DISPLAY_MAX_ROWS: usize = 7;
+const TILE_DISPLAY_MAX_COLS: usize = 50;
 impl Tile {
     fn new(id: usize, grid: Vec<Vec<bool>>) -> Self {
         let len = grid.len();
@@ -156,19 +157,19 @@ impl Tile {
 
     // Printing
     fn print(&self) {
-        for row in self.grid.iter().take(MAX_TILE_LEN_DISPLAY) {
-            for pixel in row.iter().take(MAX_TILE_LEN_DISPLAY) {
+        for row in self.grid.iter().take(TILE_DISPLAY_MAX_ROWS) {
+            for pixel in row.iter().take(TILE_DISPLAY_MAX_COLS) {
                 match pixel {
                     true => print!("#"),
                     false => print!("."),
                 };
             }
-            if self.len > MAX_TILE_LEN_DISPLAY {
+            if self.len > TILE_DISPLAY_MAX_COLS {
                 print!(" …");
             }
             println!();
         }
-        if self.len > MAX_TILE_LEN_DISPLAY {
+        if self.len > TILE_DISPLAY_MAX_ROWS {
             println!("         …  …  …");
         }
     }
@@ -209,7 +210,7 @@ struct AssembledPuzzle {
     tile_len: usize,
     puzzle_len: usize,
 }
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct AssembledImage(Tile);
 
 /*
@@ -377,18 +378,33 @@ impl AssembledPuzzle {
 impl AssembledImage {
     fn new(assembled: &AssembledPuzzle) -> Self {
         let canvas_step = assembled.tile_len - 2;
+        let tile_last = assembled.tile_len - 1;
         let puzzle_len = assembled.puzzle_len;
         let canvas_size = canvas_step * puzzle_len;
         let mut canvas: Vec<Vec<bool>> =
             vec![vec![false; canvas_size]; canvas_size];
         for row in 0..puzzle_len {
             for col in 0..puzzle_len {
+                let tile = &assembled.grid[row][col];
+                // Sanity check: verify that the pixels line up
+                if row > 0 {
+                    let prev = &assembled.grid[row - 1][col];
+                    for j in 0..canvas_step {
+                        assert_eq!(tile.grid[0][j], prev.grid[tile_last][j]);
+                    }
+                }
+                if col > 0 {
+                    let prev = &assembled.grid[row][col - 1];
+                    for i in 0..canvas_step {
+                        assert_eq!(tile.grid[i][0], prev.grid[i][tile_last]);
+                    }
+                }
+                // Copy over other pixels
                 for i in 0..canvas_step {
                     for j in 0..canvas_step {
                         let x = canvas_step * row + i;
                         let y = canvas_step * col + j;
-                        let tile = &assembled.grid[row][col];
-                        let pixel = tile.grid[i][j];
+                        let pixel = tile.grid[i + 1][j + 1];
                         canvas[x][y] = pixel;
                     }
                 }
@@ -396,8 +412,94 @@ impl AssembledImage {
         }
         Self(Tile::new(0, canvas))
     }
+}
+
+/*
+    Detecting sea monsters
+
+    Sea monster image:
+    ----------------------
+    |                  # |
+    |#    ##    ##    ###|
+    | #  #  #  #  #  #   |
+    ----------------------
+    3 x 20
+*/
+
+const SEAMONSTER_COORDS: &[(usize, usize)] = &[
+    (1, 0),
+    (2, 1),
+    (2, 4),
+    (1, 5),
+    (1, 6),
+    (2, 7),
+    (2, 10),
+    (1, 11),
+    (1, 12),
+    (2, 13),
+    (2, 16),
+    (1, 17),
+    (1, 18),
+    (0, 18),
+    (1, 19),
+];
+
+impl AssembledImage {
+    fn seamonster_at(&self, i: usize, j: usize) -> bool {
+        if i + 2 >= self.0.len || j + 19 >= self.0.len {
+            return false;
+        }
+        for (di, dj) in SEAMONSTER_COORDS {
+            if !self.0.grid[i + di][j + dj] {
+                return false;
+            }
+        }
+        true
+    }
+    fn count_seamonsters(&self) -> usize {
+        let mut count = 0;
+        for i in 0..self.0.len {
+            for j in 0..self.0.len {
+                if self.seamonster_at(i, j) {
+                    count += 1;
+                }
+            }
+        }
+        count
+    }
+    fn find_seamonster_orientation(&mut self) {
+        while self.count_seamonsters() == 0 {
+            self.0.reorient();
+        }
+        let seamonsters = self.count_seamonsters();
+        self.0.reorient();
+        for _ in 0..7 {
+            assert_eq!(self.count_seamonsters(), 0);
+            self.0.reorient();
+        }
+        assert_eq!(seamonsters, self.count_seamonsters());
+    }
+
+    fn erase_seamonster_at(&mut self, i: usize, j: usize) {
+        for (di, dj) in SEAMONSTER_COORDS {
+            self.0.grid[i + di][j + dj] = false;
+        }
+    }
+    fn erase_all_seamonsters(&self) -> Self {
+        let mut other = self.clone();
+        for i in 0..self.0.len {
+            for j in 0..self.0.len {
+                if self.seamonster_at(i, j) {
+                    other.erase_seamonster_at(i, j);
+                }
+            }
+        }
+        other
+    }
+
     fn print(&self) {
         self.0.print();
+        println!("Seamonsters found: {}", self.count_seamonsters());
     }
 }
 
@@ -409,9 +511,8 @@ fn part1_answer(sorted: &SortedPuzzle) -> usize {
     sorted.corner_tiles.iter().map(|c| c.id).product()
 }
 
-fn part2_answer(_assembled: &AssembledImage) -> usize {
-    // TODO
-    0
+fn part2_answer(clean: &AssembledImage) -> usize {
+    clean.0.grid.iter().flatten().filter(|&&p| p).count()
 }
 
 fn parse_input(lines: &[String]) -> Vec<Tile> {
@@ -460,11 +561,16 @@ fn main() {
     let assembled = AssembledPuzzle::new(&unsorted, &sorted);
     assembled.print_ids();
 
-    println!("=== Assembled image ===");
-    let image = AssembledImage::new(&assembled);
+    println!("=== Assembled image (oriented) ===");
+    let mut image = AssembledImage::new(&assembled);
+    image.find_seamonster_orientation();
     image.print();
+
+    println!("=== Seamonster-free image ===");
+    let clean = image.erase_all_seamonsters();
+    clean.print();
 
     println!("=== Answers ===");
     println!("Part 1: {}", part1_answer(&sorted));
-    println!("Part 2: {}", part2_answer(&image));
+    println!("Part 2: {}", part2_answer(&clean));
 }
