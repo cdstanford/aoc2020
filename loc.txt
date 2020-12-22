@@ -1,0 +1,27 @@
+Output of `find . -name '*.rs' | sort | xargs wc -l`:
+
+    67 ./src/bin/day01.rs
+    92 ./src/bin/day02.rs
+    85 ./src/bin/day03.rs
+   230 ./src/bin/day04.rs
+    65 ./src/bin/day05.rs
+    49 ./src/bin/day06.rs
+   153 ./src/bin/day07.rs
+   164 ./src/bin/day08.rs
+    59 ./src/bin/day09.rs
+    88 ./src/bin/day10.rs
+   183 ./src/bin/day11.rs
+   124 ./src/bin/day12.rs
+    88 ./src/bin/day13.rs
+   129 ./src/bin/day14.rs
+    70 ./src/bin/day15.rs
+   250 ./src/bin/day16.rs
+   173 ./src/bin/day17.rs
+   222 ./src/bin/day18.rs
+   488 ./src/bin/day19.rs
+   576 ./src/bin/day20.rs
+   249 ./src/bin/day21.rs
+   300 ./src/bin/day22.rs
+     1 ./src/lib.rs
+    50 ./src/util.rs
+  3955 total
