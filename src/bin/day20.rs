@@ -75,6 +75,7 @@ struct Tile {
     grid: Vec<Vec<bool>>, // len x len grid
     times_reoriented: usize,
 }
+const MAX_TILE_LEN_DISPLAY: usize = 25;
 impl Tile {
     fn new(id: usize, grid: Vec<Vec<bool>>) -> Self {
         let len = grid.len();
@@ -152,6 +153,25 @@ impl Tile {
     fn fits_east(&self, other: &Self) -> bool {
         self.fits_core(other, East, West)
     }
+
+    // Printing
+    fn print(&self) {
+        for row in self.grid.iter().take(MAX_TILE_LEN_DISPLAY) {
+            for pixel in row.iter().take(MAX_TILE_LEN_DISPLAY) {
+                match pixel {
+                    true => print!("#"),
+                    false => print!("."),
+                };
+            }
+            if self.len > MAX_TILE_LEN_DISPLAY {
+                print!(" …");
+            }
+            println!();
+        }
+        if self.len > MAX_TILE_LEN_DISPLAY {
+            println!("         …  …  …");
+        }
+    }
 }
 
 /*
@@ -183,9 +203,18 @@ struct SortedPuzzle {
     inside_tiles: Vec<Tile>,
     puzzle_len: usize,
 }
-struct AssembledPuzzle(Vec<Vec<Tile>>);
+#[derive(Debug)]
+struct AssembledPuzzle {
+    grid: Vec<Vec<Tile>>,
+    tile_len: usize,
+    puzzle_len: usize,
+}
+#[derive(Debug)]
 struct AssembledImage(Tile);
 
+/*
+    Collecting the puzzle tiles to store the set of corresponding edges
+*/
 impl UnsortedPuzzle {
     fn new(tile_list: &[Tile]) -> Self {
         let mut puzzle: Self = Default::default();
@@ -222,8 +251,16 @@ impl UnsortedPuzzle {
             self.tiles[&possibilities[0]].clone()
         }
     }
+
+    fn print_tile_counts(&self) {
+        println!("Total tiles: {}", self.tiles.len());
+        println!("Unique tile edge patterns: {}", self.edges.len());
+    }
 }
 
+/*
+    Sorting the tiles
+*/
 impl SortedPuzzle {
     fn new(unsorted: &UnsortedPuzzle) -> Self {
         let mut puzzle: Self = Default::default();
@@ -255,70 +292,112 @@ impl SortedPuzzle {
         assert_eq!(unsorted.tiles.len(), n * n);
         assert_eq!(unsorted.edges.len(), 2 * n * (n + 1));
     }
-    fn print_tile_counts(&self, unsorted: &UnsortedPuzzle) {
+    fn print_tile_counts(&self) {
         println!("Corner tiles: {}", self.corner_tiles.len());
         println!("Edge tiles: {}", self.edge_tiles.len());
         println!("Inside tiles: {}", self.inside_tiles.len());
-        println!("Total tiles: {}", unsorted.tiles.len());
-        println!("Unique tile edge patterns: {}", unsorted.edges.len());
     }
 }
 
-// Assembling the puzzle
-fn assemble_tl_corner(unsorted: &UnsortedPuzzle, tile: &mut Tile) {
-    while !unsorted.is_puzzle_edge(&tile.get_edge(South))
-        || !unsorted.is_puzzle_edge(&tile.get_edge(East))
-    {
+/*
+    Assembling the tiles (in top-to-bottom, left-to-right order)
+*/
+fn fits_southeast(
+    unsorted: &UnsortedPuzzle,
+    above: Option<&Tile>,
+    left: Option<&Tile>,
+    tile: &Tile,
+) -> bool {
+    (above.is_some() || unsorted.is_puzzle_edge(&tile.get_edge(North)))
+        && (above.is_none() || above.unwrap().fits_south(tile))
+        && (left.is_some() || unsorted.is_puzzle_edge(&tile.get_edge(West)))
+        && (left.is_none() || left.unwrap().fits_east(tile))
+}
+fn assemble_tile(
+    unsorted: &UnsortedPuzzle,
+    above: Option<&Tile>,
+    left: Option<&Tile>,
+    tile: &mut Tile,
+) {
+    // Precondition: there exists a unique orientation that fits
+    while !fits_southeast(unsorted, above, left, tile) {
         tile.reorient();
-    }
-}
-fn assemble_south(tile1: &Tile, tile2: &mut Tile) {
-    // TODO: fix this, needs to also make the tile line up west-to-east
-    while !tile1.fits_south(tile2) {
-        tile2.reorient();
-    }
-}
-fn assemble_east(tile1: &Tile, tile2: &mut Tile) {
-    // TODO: fix this, needs to also make the tile line up north-to-south
-    while !tile1.fits_east(tile2) {
-        tile2.reorient();
     }
 }
 impl AssembledPuzzle {
     fn new(unsorted: &UnsortedPuzzle, sorted: &SortedPuzzle) -> Self {
-        let n = sorted.puzzle_len;
+        let tile_len = unsorted.tile_len;
+        let puzzle_len = sorted.puzzle_len;
         let mut grid: Vec<Vec<Tile>> = Vec::new(); // n x n grid
-        for i in 0..n {
+        for i in 0..puzzle_len {
             grid.push(Vec::new());
-            for j in 0..n {
+            for j in 0..puzzle_len {
                 // Assemble tile (i, j)
                 if i == 0 && j == 0 {
                     let mut new_tile = sorted.corner_tiles[0].clone();
-                    assemble_tl_corner(unsorted, &mut new_tile);
+                    assemble_tile(unsorted, None, None, &mut new_tile);
                     grid[i].push(new_tile);
                 } else if j == 0 {
+                    // i > 0, j == 0
                     let above = &grid[i - 1][j];
                     let edge = above.get_edge(South);
                     let mut new_tile = unsorted.get_other_at_edge(above, &edge);
-                    assemble_south(&above, &mut new_tile);
+                    assemble_tile(unsorted, Some(above), None, &mut new_tile);
                     grid[i].push(new_tile);
                 } else {
+                    // j > 0
                     let left = &grid[i][j - 1];
                     let edge = left.get_edge(East);
                     let mut new_tile = unsorted.get_other_at_edge(left, &edge);
-                    assemble_east(&left, &mut new_tile);
+                    let above =
+                        if i == 0 { None } else { Some(&grid[i - 1][j]) };
+                    assemble_tile(unsorted, above, Some(left), &mut new_tile);
                     grid[i].push(new_tile);
                 }
+                debug_assert_eq!(grid[i][j].len, tile_len);
             }
+            debug_assert_eq!(grid[i].len(), puzzle_len);
         }
-        Self(grid)
+        debug_assert_eq!(grid.len(), puzzle_len);
+        Self { grid, tile_len, puzzle_len }
+    }
+    fn print_ids(&self) {
+        for row in &self.grid {
+            for tile in row {
+                print!("{} ", tile.id);
+            }
+            println!();
+        }
     }
 }
 
+/*
+    Assembling the image
+*/
 impl AssembledImage {
-    fn new(_assembled: &AssembledPuzzle) -> Self {
-        // TODO
-        unimplemented!();
+    fn new(assembled: &AssembledPuzzle) -> Self {
+        let canvas_step = assembled.tile_len - 2;
+        let puzzle_len = assembled.puzzle_len;
+        let canvas_size = canvas_step * puzzle_len;
+        let mut canvas: Vec<Vec<bool>> =
+            vec![vec![false; canvas_size]; canvas_size];
+        for row in 0..puzzle_len {
+            for col in 0..puzzle_len {
+                for i in 0..canvas_step {
+                    for j in 0..canvas_step {
+                        let x = canvas_step * row + i;
+                        let y = canvas_step * col + j;
+                        let tile = &assembled.grid[row][col];
+                        let pixel = tile.grid[i][j];
+                        canvas[x][y] = pixel;
+                    }
+                }
+            }
+        }
+        Self(Tile::new(0, canvas))
+    }
+    fn print(&self) {
+        self.0.print();
     }
 }
 
@@ -331,6 +410,7 @@ fn part1_answer(sorted: &SortedPuzzle) -> usize {
 }
 
 fn part2_answer(_assembled: &AssembledImage) -> usize {
+    // TODO
     0
 }
 
@@ -367,14 +447,22 @@ fn main() {
     let tile_list = parse_input(&file_to_vec("input/day20.txt"));
     // println!("Tiles: {:?}", tile_list);
     // println!("First tile: {:?}", tile_list[0]);
-    let unsorted = UnsortedPuzzle::new(&tile_list);
-    let sorted = SortedPuzzle::new(&unsorted);
-    // TODO debug (the following line currently panics)
-    let assembled = AssembledPuzzle::new(&unsorted, &sorted);
-    let image = AssembledImage::new(&assembled);
 
-    println!("=== Puzzle counts ===");
-    sorted.print_tile_counts(&unsorted);
+    println!("=== Unsorted puzzle ===");
+    let unsorted = UnsortedPuzzle::new(&tile_list);
+    unsorted.print_tile_counts();
+
+    println!("=== Sorted puzzle ===");
+    let sorted = SortedPuzzle::new(&unsorted);
+    sorted.print_tile_counts();
+
+    println!("=== Solved puzzle ===");
+    let assembled = AssembledPuzzle::new(&unsorted, &sorted);
+    assembled.print_ids();
+
+    println!("=== Assembled image ===");
+    let image = AssembledImage::new(&assembled);
+    image.print();
 
     println!("=== Answers ===");
     println!("Part 1: {}", part1_answer(&sorted));
