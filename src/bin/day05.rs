@@ -59,7 +59,7 @@ fn solve_part2(board_passes: &[String]) -> usize {
 }
 
 fn main() {
-    let board_passes = file_to_vec("input/day5.txt");
+    let board_passes = file_to_vec("input/day05.txt");
     println!("Part 1 Answer: {}", solve_part1(&board_passes));
     println!("Part 2 Answer: {}", solve_part2(&board_passes));
 }

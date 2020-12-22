@@ -156,7 +156,7 @@ fn solve_part2(program: Program) -> isize {
 }
 
 fn main() {
-    let lines = file_to_vec("input/day8.txt");
+    let lines = file_to_vec("input/day08.txt");
     let program: Program = lines.iter().map(|s| s.parse().unwrap()).collect();
     // println!("Program: {:?}", program);
     println!("Part 1 Answer: {:?}", solve_part1(program.clone()));

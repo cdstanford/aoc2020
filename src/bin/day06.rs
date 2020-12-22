@@ -35,7 +35,7 @@ fn solve_part2(data: &[Vec<String>]) -> usize {
 fn main() {
     let mut data = Vec::new();
     let mut group = Vec::new();
-    for line in file_to_vec_el("input/day6.txt") {
+    for line in file_to_vec_el("input/day06.txt") {
         if line == "" {
             data.push(group);
             group = Vec::new();

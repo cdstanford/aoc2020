@@ -123,7 +123,7 @@ fn solve_part2(bag_graph: &mut BagGraph<String>) -> usize {
 fn main() {
     // Parse input
     let mut bag_graph = BagGraph::new();
-    for line in file_to_vec("input/day7.txt") {
+    for line in file_to_vec("input/day07.txt") {
         let words = line_to_words(&line);
         let name = format!("{} {}", words[0], words[1]);
         assert_eq!("bags", words[2]);

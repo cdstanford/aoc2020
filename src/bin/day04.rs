@@ -203,7 +203,7 @@ fn solve_part2(data: Vec<HashMap<String, String>>) -> usize {
 
 fn main() {
     /* Parse Input */
-    let input_tokens: Vec<String> = file_to_vec("input/day4.txt")
+    let input_tokens: Vec<String> = file_to_vec("input/day04.txt")
         .iter()
         .flat_map(|line| line.split(' '))
         .map(|s| s.to_owned())

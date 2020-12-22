@@ -77,7 +77,7 @@ fn solve_part2(tob_map: &TobogganMap) -> usize {
 }
 
 fn main() {
-    let raw_input = file_to_vec("input/day3.txt");
+    let raw_input = file_to_vec("input/day03.txt");
     let tob_map = TobogganMap::parse_input(raw_input);
     // println!("{}", tob_map);
     println!("Part 1 Answer: {}", solve_part1(&tob_map));

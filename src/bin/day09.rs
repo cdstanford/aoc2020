@@ -48,7 +48,7 @@ fn solve_part2(nums: &[isize], target: isize) -> isize {
 }
 
 fn main() {
-    let nums: Vec<isize> = file_to_vec("input/day9.txt")
+    let nums: Vec<isize> = file_to_vec("input/day09.txt")
         .iter()
         .map(|s| s.parse().unwrap())
         .collect();

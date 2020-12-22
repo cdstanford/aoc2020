@@ -80,7 +80,7 @@ mod tests {
 }
 
 fn main() {
-    let file = File::open("input/day2.txt").unwrap();
+    let file = File::open("input/day02.txt").unwrap();
     // let file = File::open("input/day2_test.txt").unwrap();
     let reader = BufReader::new(file);
     let data = reader

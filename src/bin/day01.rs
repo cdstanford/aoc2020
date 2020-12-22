@@ -54,7 +54,7 @@ fn find_sum3(nums: &[usize], target: usize) -> (usize, usize, usize) {
 }
 
 fn main() {
-    let nums = file_to_int_vec("input/day1.txt");
+    let nums = file_to_int_vec("input/day01.txt");
     // println!("Nums: {:?}", nums);
 
     /* Part 1 */
