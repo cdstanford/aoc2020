@@ -4,7 +4,7 @@
     Day 23 Solution
     2020-12-23
 
-    Time (--release):
+    Time (--release): 0m1.979s
 */
 
 use aoc2020::util::{file_to_vec_parsed, unique_0_to_n};
@@ -176,22 +176,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_part1() {
+    fn test_game() {
         let starting = vec![3, 8, 9, 1, 2, 5, 4, 6, 7];
         let mut game = CupGame::new(&starting);
         assert_eq!(&game.display(), "389125467");
+        game.step();
+        assert_eq!(&game.display(), "289154673");
+        game.step();
+        assert_eq!(&game.display(), "546789132");
+        game.step_for(8);
+        assert_eq!(&game.display(), "837419265");
     }
 }
 
 fn main() {
     let input: Vec<usize> = file_to_vec_parsed("input/day23.txt");
-    let mut game = CupGame::new(&input);
 
     println!("===== Part 1 =====");
+    let mut game = CupGame::new(&input);
     println!("Start state: {}", game.display());
     game.step_for(100);
     println!("End state: {}", game.display());
     println!("Answer: {}", &game.display_from(1)[1..]);
 
     println!("===== Part 2 =====");
+    let mut input = input;
+    input.append(&mut (10..=1000000).collect());
+    let mut game = CupGame::new(&input);
+    game.step_for(10000000);
+    let mut iter = game.cups_clockwise_from(0);
+    assert_eq!(iter.next().unwrap() + 1, 1);
+    let star1 = iter.next().unwrap() + 1;
+    let star2 = iter.next().unwrap() + 1;
+    println!("Answer: {} x {} = {}", star1, star2, star1 * star2);
 }
