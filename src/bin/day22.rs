@@ -8,37 +8,11 @@
     Time (--debug): 0m9.072s
 */
 
-use aoc2020::util::{file_to_vec, iter_to_pair};
+use aoc2020::util::{file_to_vec, iter_to_pair, unique, unique_1_to_n};
 use std::cmp::Ordering;
 use std::collections::hash_map::DefaultHasher;
 use std::collections::{HashSet, VecDeque};
 use std::hash::{Hash, Hasher};
-
-// A fun utility function to check if a list of integers contains every
-// number from 1 to n, for some n.
-fn unique_1_to_n<'a, I: Iterator<Item = &'a usize>>(ints: I) -> bool {
-    let mut seen = HashSet::new();
-    let mut high = None;
-    for &i in ints {
-        if i == 0 || seen.contains(&i) {
-            return false;
-        }
-        seen.insert(i);
-        high = high.max(Some(i));
-    }
-    high.unwrap_or(0) == seen.len()
-}
-// Weaker version for recursive games in part 2: only checks uniqueness
-fn unique<'a, I: Iterator<Item = &'a usize>>(ints: I) -> bool {
-    let mut seen = HashSet::new();
-    for &i in ints {
-        if i == 0 || seen.contains(&i) {
-            return false;
-        }
-        seen.insert(i);
-    }
-    true
-}
 
 /*
     Basic types
@@ -246,31 +220,9 @@ impl SpaceCards {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_unique_1_to_n() {
-        assert!(unique_1_to_n([].iter()));
-        assert!(unique_1_to_n([1].iter()));
-        assert!(unique_1_to_n([1, 2].iter()));
-        assert!(unique_1_to_n([2, 1].iter()));
-        assert!(unique_1_to_n([1, 2, 3, 4, 5].iter()));
-        assert!(unique_1_to_n([5, 2, 4, 1, 3].iter()));
-        assert!(unique_1_to_n([1, 2, 5, 4, 3].iter()));
-        assert!(!unique_1_to_n([0].iter()));
-        assert!(!unique_1_to_n([2].iter()));
-        assert!(!unique_1_to_n([1, 1].iter()));
-        assert!(!unique_1_to_n([1, 3].iter()));
-        assert!(!unique_1_to_n([3, 2].iter()));
-        assert!(!unique_1_to_n([5, 5].iter()));
-        assert!(!unique_1_to_n([1, 2, 0].iter()));
-        assert!(!unique_1_to_n([1, 2, 4, 4, 5].iter()));
-        assert!(!unique_1_to_n([1, 2, 3, 4, 6].iter()));
-    }
-}
-
+/*
+    Input parsing and entrypoint
+*/
 fn parse_input(lines: &[String]) -> (Vec<usize>, Vec<usize>) {
     let (p1_lines, p2_lines) = iter_to_pair(lines.split(|line| line == ""));
     assert_eq!(p1_lines[0], "Player 1:");
@@ -281,7 +233,6 @@ fn parse_input(lines: &[String]) -> (Vec<usize>, Vec<usize>) {
         p2_lines.iter().skip(1).map(|line| line.parse().unwrap()).collect();
     (deck1, deck2)
 }
-
 fn main() {
     let lines = file_to_vec("input/day22.txt");
     let (starting_deck1, starting_deck2) = parse_input(&lines);
