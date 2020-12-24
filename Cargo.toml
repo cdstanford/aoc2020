@@ -8,5 +8,6 @@ edition = "2018"
 
 [dependencies]
 ascii = "1.0.0"
+derive_more = "0.99.11"
 regex = "1.4.2"
 z3 = "0.9.0"
