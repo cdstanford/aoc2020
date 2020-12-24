@@ -30,11 +30,11 @@ impl FromStr for Instruction {
             ));
         }
         let op: &str = parts[0];
-        let arg: isize = parts[1].parse().or_else(|err| {
-            Err(format!(
+        let arg: isize = parts[1].parse().map_err(|err| {
+            format!(
                 "Could not parse instruction argument as isize: {} ({})",
                 parts[1], err,
-            ))
+            )
         })?;
         match op {
             "acc" => Ok(Self::Acc(arg)),

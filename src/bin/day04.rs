@@ -101,8 +101,8 @@ fn validate_date(
     low: usize,
     high: usize,
 ) -> Result<usize, String> {
-    let parsed = date_str.parse().or_else(|err| {
-        Err(format!("could not parse as int: {} ({:?})", date_str, err))
+    let parsed = date_str.parse().map_err(|err| {
+        format!("could not parse as int: {} ({:?})", date_str, err)
     })?;
     validate_int_range(parsed, low, high)
 }
@@ -112,8 +112,8 @@ fn validate_height(hgt: &str) -> Result<(usize, String), String> {
     let second_part: String = hgt.chars().skip(n - 2).collect();
     assert!(second_part.chars().count() == 2);
 
-    let parsed = first_part.parse().or_else(|err| {
-        Err(format!("could not parse as int: {} ({:?})", first_part, err))
+    let parsed = first_part.parse().map_err(|err| {
+        format!("could not parse as int: {} ({:?})", first_part, err)
     })?;
     let validated = match second_part.as_ref() {
         "cm" => validate_int_range(parsed, 150, 193),

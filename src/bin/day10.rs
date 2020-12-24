@@ -13,7 +13,7 @@ fn preprocess_joltages(joltages: &mut Vec<usize>) {
     let high = joltages.iter().max().unwrap() + 3;
     joltages.push(low);
     joltages.push(high);
-    joltages.sort();
+    joltages.sort_unstable();
 }
 
 // Part 1: output # of 1 diffs, # of 3 diffs
