@@ -52,6 +52,29 @@ where
     (elem1, elem2)
 }
 
+/* Useful iterators */
+
+pub fn iter_prod<T, IterT, U, IterU>(
+    iter_t: IterT,
+    iter_u: IterU,
+) -> impl Iterator<Item = (T, U)>
+where
+    T: Clone,
+    IterT: Iterator<Item = T>,
+    IterU: Iterator<Item = U> + Clone,
+{
+    iter_t.flat_map(move |t| iter_u.clone().map(move |u| (t.clone(), u)))
+}
+
+pub fn iter_rectangle(
+    x0: isize,
+    y0: isize,
+    x1: isize,
+    y1: isize,
+) -> impl Iterator<Item = (isize, isize)> {
+    iter_prod(x0..=x1, y0..=y1)
+}
+
 /* Validation */
 
 // Check if a list of integers contains every number from 1 to n, for some n.

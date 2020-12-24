@@ -4,10 +4,10 @@
     Day 24 Solution
     2020-12-24
 
-    Time (--release):
+    Time (--release): 0m0.255s
 */
 
-use aoc2020::util::file_to_vec;
+use aoc2020::util::{file_to_vec, iter_rectangle};
 use derive_more::{Add, Sum};
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -17,7 +17,8 @@ use std::iter::FromIterator;
 
     These are just the same as rectangular coordinates with an appropriate
     choice of basis.
-    The function sum_path aggregates the steps along a path.
+    The function agg_path aggregates the steps along a path for part 1.
+    The iterators neighbors and iter_hex_box_padded are useful for part 2.
 */
 
 #[derive(Add, Clone, Debug, Eq, Hash, PartialEq, Sum)]
@@ -29,10 +30,35 @@ const NW: HexCoord = HexCoord(-1, 1);
 const W: HexCoord = HexCoord(-1, 0);
 const SW: HexCoord = HexCoord(0, -1);
 const SE: HexCoord = HexCoord(1, -1);
+const ALL_DIRS: &[HexCoord] = &[E, NE, NW, W, SW, SE];
+
+const HEXCOORD_MIN: HexCoord = HexCoord(isize::MIN, isize::MIN);
+const HEXCOORD_MAX: HexCoord = HexCoord(isize::MAX, isize::MAX);
 
 fn agg_path(path: &[HexCoord]) -> HexCoord {
     let result = path.iter().cloned().sum();
     result
+}
+
+// HexCoord iterators
+
+fn neighbors(coord: &HexCoord) -> impl Iterator<Item = HexCoord> {
+    // Need to clone coord to capture and use it in a closure
+    let coord = coord.clone();
+    ALL_DIRS.iter().cloned().map(move |dir| dir + coord.clone())
+}
+
+fn iter_hex_box_padded(
+    bound_low: &HexCoord,
+    bound_high: &HexCoord,
+) -> impl Iterator<Item = HexCoord> {
+    // Iterate over coordinates within hexagonal low/upper bounds, including
+    // 1 layer of padding around the box
+    let x0 = bound_low.0 - 1;
+    let y0 = bound_low.1 - 1;
+    let x1 = bound_high.0 + 1;
+    let y1 = bound_high.1 + 1;
+    iter_rectangle(x0, y0, x1, y1).map(|(x, y)| HexCoord(x, y))
 }
 
 /*
@@ -40,18 +66,70 @@ fn agg_path(path: &[HexCoord]) -> HexCoord {
 
     For part 1: supports .toggle() to toggle tiles and FromIterator<HexCoord>
     to toggle all tiles specified in the input.
+
+    For part 2: implements .step(), the game of life update rules.
 */
 
-struct HexGrid(HashSet<HexCoord>);
+#[derive(Clone)]
+struct HexGrid {
+    grid: HashSet<HexCoord>,
+    bound_low: HexCoord,
+    bound_high: HexCoord,
+}
 impl HexGrid {
     fn new() -> Self {
-        HexGrid(HashSet::new())
+        HexGrid {
+            grid: HashSet::new(),
+            bound_low: HEXCOORD_MAX,
+            bound_high: HEXCOORD_MIN,
+        }
     }
-    fn toggle(&mut self, coord: HexCoord) {
-        if self.0.contains(&coord) {
-            self.0.remove(&coord);
+    fn len(&self) -> usize {
+        self.grid.len()
+    }
+
+    // Core update functions
+    fn update_bounds(&mut self, coord: &HexCoord) {
+        self.bound_low.0 = self.bound_low.0.min(coord.0);
+        self.bound_low.1 = self.bound_low.1.min(coord.1);
+        self.bound_high.0 = self.bound_high.0.max(coord.0);
+        self.bound_high.1 = self.bound_high.1.max(coord.1);
+    }
+    fn insert(&mut self, coord: HexCoord) {
+        // Precondition: coord is not currently in grid
+        debug_assert!(!self.grid.contains(&coord));
+        self.update_bounds(&coord);
+        self.grid.insert(coord);
+    }
+    fn toggle(&mut self, coord: &HexCoord) {
+        // Makes sure to update bounds also
+        if self.grid.contains(coord) {
+            self.grid.remove(coord);
         } else {
-            self.0.insert(coord);
+            self.insert(coord.clone());
+        }
+    }
+
+    // Game logic (for part 2)
+    fn iter_coords(&self) -> impl Iterator<Item = HexCoord> {
+        iter_hex_box_padded(&self.bound_low, &self.bound_high)
+    }
+    fn count_neighbors(&self, coord: &HexCoord) -> usize {
+        neighbors(coord).map(|c| self.grid.contains(&c)).filter(|&b| b).count()
+    }
+    fn step(&mut self) {
+        let mut new_grid = Self::new();
+        for coord in self.iter_coords() {
+            let neighbors = self.count_neighbors(&coord);
+            if neighbors == 2 || neighbors == 1 && self.grid.contains(&coord) {
+                new_grid.insert(coord)
+            }
+        }
+        *self = new_grid;
+    }
+    fn step_for(&mut self, iterations: usize) {
+        for _ in 0..iterations {
+            self.step();
         }
     }
 }
@@ -59,7 +137,7 @@ impl FromIterator<HexCoord> for HexGrid {
     fn from_iter<I: IntoIterator<Item = HexCoord>>(iter: I) -> Self {
         let mut grid = Self::new();
         for coord in iter {
-            grid.toggle(coord);
+            grid.toggle(&coord);
         }
         grid
     }
@@ -67,6 +145,10 @@ impl FromIterator<HexCoord> for HexGrid {
 
 /*
     Input parsing
+
+    This code is more verbose than I would like.
+    I initially tried to use Regex for more concise parsing but it's not the
+    best for this use case.
 */
 
 fn parse_dir(dir_raw: &str) -> HexCoord {
@@ -103,22 +185,19 @@ fn parse_input(lines: &[String]) -> Vec<Vec<HexCoord>> {
     Solutions and entrypoint
 */
 
-fn solve_part1(paths: &[Vec<HexCoord>]) -> usize {
-    let grid: HexGrid = paths.iter().map(|p| agg_path(p)).collect();
-    grid.0.len()
-}
-
-fn solve_part2(_paths: &[Vec<HexCoord>]) -> usize {
-    0
-}
-
 fn main() {
     let input = file_to_vec("input/day24.txt");
     let paths: Vec<Vec<_>> = parse_input(&input);
     // println!("Parsed input: {:?}", paths);
 
-    println!("Part 1 Answer: {}", solve_part1(&paths));
-    println!("Part 2 Answer: {}", solve_part2(&paths));
+    println!("===== Part 1 =====");
+    let grid: HexGrid = paths.iter().map(|p| agg_path(p)).collect();
+    println!("Part 1 Answer: {}", grid.len());
+
+    println!("===== Part 2 =====");
+    let mut grid = grid;
+    grid.step_for(100);
+    println!("Part 2 Answer: {}", grid.len());
 }
 
 /*
