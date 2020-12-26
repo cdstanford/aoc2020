@@ -24,7 +24,7 @@ Output of `find . -name '*.rs' | sort | xargs wc -l`:
    251 ./src/bin/day22.rs
    212 ./src/bin/day23.rs
    225 ./src/bin/day24.rs
-    18 ./src/bin/day25.rs
+    65 ./src/bin/day25.rs
      1 ./src/lib.rs
    145 ./src/util.rs
-  4456 total
+  4503 total
