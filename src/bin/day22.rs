@@ -224,7 +224,8 @@ impl SpaceCards {
     Input parsing and entrypoint
 */
 fn parse_input(lines: &[String]) -> (Vec<usize>, Vec<usize>) {
-    let (p1_lines, p2_lines) = iter_to_pair(lines.split(|line| line == ""));
+    let (p1_lines, p2_lines) =
+        iter_to_pair(lines.split(|line| line.is_empty()));
     assert_eq!(p1_lines[0], "Player 1:");
     assert_eq!(p2_lines[0], "Player 2:");
     let deck1 =

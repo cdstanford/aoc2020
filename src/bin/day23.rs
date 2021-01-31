@@ -56,14 +56,14 @@ struct CupGame {
 }
 impl CupGame {
     /* Iterators */
-    fn cups_clockwise_from<'a>(
-        &'a self,
+    fn cups_clockwise_from(
+        &self,
         start: usize,
-    ) -> impl Iterator<Item = usize> + 'a {
+    ) -> impl Iterator<Item = usize> + '_ {
         iter::successors(Some(start), move |&i| Some(self.cups[i].fwd))
             .take(self.size)
     }
-    fn cups_clockwise<'a>(&'a self) -> impl Iterator<Item = usize> + 'a {
+    fn cups_clockwise(&self) -> impl Iterator<Item = usize> + '_ {
         self.cups_clockwise_from(self.curr)
     }
     fn cups_downward_from(&self, start: usize) -> impl Iterator<Item = usize> {

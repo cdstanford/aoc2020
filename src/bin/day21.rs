@@ -15,7 +15,7 @@ use aoc2020::util::{file_to_vec, iter_to_pair};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter::{once, FromIterator};
+use std::iter::once;
 
 /*
     InjectionFinder: a data structure for finding injections from U into V,
@@ -206,7 +206,7 @@ fn parse_input(lines: &[String]) -> Vec<Constraint> {
 fn create_inj_finder(constraints: &[Constraint]) -> Solver {
     let mut inj_finder: Solver = Default::default();
     for (ingredients, allergens) in constraints {
-        let ingredient_set = HashSet::from_iter(ingredients.iter().cloned());
+        let ingredient_set = ingredients.iter().cloned().collect();
         for allergen in allergens {
             inj_finder.add_constraint(allergen, &ingredient_set);
         }

@@ -211,7 +211,7 @@ fn main() {
     let mut input = vec![HashMap::new()];
     let mut last_index = 0;
     for token in input_tokens {
-        if token == "" {
+        if token.is_empty() {
             input.push(HashMap::new());
             last_index += 1;
         } else {

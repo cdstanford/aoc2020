@@ -36,7 +36,7 @@ fn main() {
     let mut data = Vec::new();
     let mut group = Vec::new();
     for line in file_to_vec_el("input/day06.txt") {
-        if line == "" {
+        if line.is_empty() {
             data.push(group);
             group = Vec::new();
         } else {
