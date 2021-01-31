@@ -58,12 +58,31 @@ use std::collections::{HashMap, HashSet};
     operations per match.
 
     # Space complexity
-    Sicne we reset the cache after each string match, the memory complexity
+    Since we reset the cache after each string match, the memory complexity
     (cache size) is O(n^2 m) for part 1. For part 2, there is no a priori bound
     on the size of the call stack but in practice it seems to be low enough.
 */
 
 type RegexId = u16;
+const MAX_ID: RegexId = 200;
+fn base_id(id: u16) -> RegexId {
+    debug_assert!(
+        id < MAX_ID,
+        format!("ID {} too large: MAX_ID is {}", id, MAX_ID)
+    );
+    id
+}
+fn fresh_id(id: u16, offset: u16) -> RegexId {
+    debug_assert!(offset >= 1);
+    base_id(id) + offset * MAX_ID
+}
+fn parse_id(id_str: &str) -> RegexId {
+    let id = id_str.parse::<RegexId>().unwrap_or_else(|err| {
+        panic!("Could not parse ID (u16): {} ({})", id_str, err)
+    });
+    base_id(id)
+}
+
 #[derive(Clone, Copy, Debug)]
 enum RegexCases {
     Union(RegexId, RegexId),
@@ -80,9 +99,11 @@ struct SmartRegexMatcher {
     match_cache: HashMap<(RegexId, usize, usize), bool>,
     call_stack: HashSet<(RegexId, usize, usize)>,
     // Debug information
-    debug: bool,
+    #[cfg(debug_assertions)]
     cache_hits: usize,
+    #[cfg(debug_assertions)]
     cache_misses: usize,
+    #[cfg(debug_assertions)]
     loops_seen: usize,
 }
 impl SmartRegexMatcher {
@@ -96,22 +117,44 @@ impl SmartRegexMatcher {
     fn allow_loops(&mut self) {
         self.loops_allowed = true;
     }
-    fn set_debug(&mut self) {
-        self.debug = true;
-    }
 
     /* Debug info */
+    #[cfg(debug_assertions)]
     fn reset_debug_info(&mut self) {
         self.cache_hits = 0;
         self.cache_misses = 0;
         self.loops_seen = 0;
     }
+    #[cfg(debug_assertions)]
+    fn cache_hit(&mut self) {
+        self.cache_hits += 1;
+    }
+    #[cfg(debug_assertions)]
+    fn cache_miss(&mut self) {
+        self.cache_misses += 1;
+    }
+    #[cfg(debug_assertions)]
+    fn loop_seen(&mut self) {
+        self.loops_seen += 1;
+    }
+    #[cfg(debug_assertions)]
     fn print_debug_info(&self) {
         println!("Cache hits: {}", self.cache_hits);
         println!("Cache misses: {}", self.cache_misses);
         println!("Loops seen: {}", self.loops_seen);
         println!("Cache size: {}", self.match_cache.len());
     }
+
+    #[cfg(not(debug_assertions))]
+    fn reset_debug_info(&self) {}
+    #[cfg(not(debug_assertions))]
+    fn cache_hit(&self) {}
+    #[cfg(not(debug_assertions))]
+    fn cache_miss(&self) {}
+    #[cfg(not(debug_assertions))]
+    fn loop_seen(&self) {}
+    #[cfg(not(debug_assertions))]
+    fn print_debug_info(&self) {}
 
     /*
         Functionality
@@ -125,20 +168,14 @@ impl SmartRegexMatcher {
     }
     fn eval_rec(&mut self, id: RegexId, s: &str, i: usize, j: usize) -> bool {
         if let Some(&result) = self.match_cache.get(&(id, i, j)) {
-            if self.debug {
-                self.cache_hits += 1;
-            }
+            self.cache_hit();
             result
         } else if self.call_stack.contains(&(id, i, j)) {
             // Loop found
-            if self.debug {
-                self.loops_seen += 1;
-            }
+            self.loop_seen();
             false
         } else {
-            if self.debug {
-                self.cache_misses += 1;
-            }
+            self.cache_miss();
             if self.loops_allowed {
                 self.call_stack.insert((id, i, j));
             }
@@ -170,16 +207,12 @@ impl SmartRegexMatcher {
         }
     }
     fn eval(&mut self, id: RegexId, s: &str) -> bool {
-        if self.debug {
-            println!("Matching: {}", s);
-            println!("String len: {}", s.len());
-        }
+        println!("Matching: {}", s);
+        println!("String len: {}", s.len());
         let result = self.eval_rec(id, s, 0, s.len());
-        if self.debug {
-            println!("Result: {}", result);
-            self.print_debug_info();
-            self.reset_debug_info();
-        }
+        println!("Result: {}", result);
+        self.print_debug_info();
+        self.reset_debug_info();
         // Reset caches and return
         self.match_cache = HashMap::new();
         self.call_stack = HashSet::new();
@@ -215,7 +248,7 @@ fn parse_input(input_lines: &[String]) -> (SmartRegexMatcher, Vec<String>) {
         if let Some(caps) = rule.captures(line) {
             assert!(first_part);
             assert_eq!(caps.len(), 3);
-            let id = caps[1].parse::<RegexId>().unwrap();
+            let id = parse_id(&caps[1]);
             let def = &caps[2];
             if def == r#""a""# {
                 matcher.add_regex(id, RegexCases::Char('a'));
@@ -223,35 +256,34 @@ fn parse_input(input_lines: &[String]) -> (SmartRegexMatcher, Vec<String>) {
                 matcher.add_regex(id, RegexCases::Char('b'));
             } else if let Some(caps) = rule_noop.captures(def) {
                 assert_eq!(caps.len(), 2);
-                let id1 = caps[1].parse::<RegexId>().unwrap();
+                let id1 = parse_id(&caps[1]);
                 matcher.add_regex(id, RegexCases::Noop(id1));
             } else if let Some(caps) = rule_union.captures(def) {
                 assert_eq!(caps.len(), 3);
-                let id1 = caps[1].parse::<RegexId>().unwrap();
-                let id2 = caps[2].parse::<RegexId>().unwrap();
+                let id1 = parse_id(&caps[1]);
+                let id2 = parse_id(&caps[2]);
                 matcher.add_regex(id, RegexCases::Union(id1, id2));
             } else if let Some(caps) = rule_concat.captures(def) {
                 assert_eq!(caps.len(), 3);
-                let id1 = caps[1].parse::<RegexId>().unwrap();
-                let id2 = caps[2].parse::<RegexId>().unwrap();
+                let id1 = parse_id(&caps[1]);
+                let id2 = parse_id(&caps[2]);
                 matcher.add_regex(id, RegexCases::Concat(id1, id2));
             } else if let Some(caps) = rule_union_concat.captures(def) {
                 // In this case we generate two fresh IDs
-                // Assumption: input IDs are between 0 and 200
-                let fresh1 = id + 200;
-                let fresh2 = id + 400;
+                let fresh1 = fresh_id(id, 1);
+                let fresh2 = fresh_id(id, 2);
                 assert_eq!(caps.len(), 5);
-                let id1 = caps[1].parse::<RegexId>().unwrap();
-                let id2 = caps[2].parse::<RegexId>().unwrap();
-                let id3 = caps[3].parse::<RegexId>().unwrap();
-                let id4 = caps[4].parse::<RegexId>().unwrap();
+                let id1 = parse_id(&caps[1]);
+                let id2 = parse_id(&caps[2]);
+                let id3 = parse_id(&caps[3]);
+                let id4 = parse_id(&caps[4]);
                 matcher.add_regex(id, RegexCases::Union(fresh1, fresh2));
                 matcher.add_regex(fresh1, RegexCases::Concat(id1, id2));
                 matcher.add_regex(fresh2, RegexCases::Concat(id3, id4));
             } else {
                 panic!("Parsing error: could not parse rule: {}", def);
             }
-        } else if line == "" {
+        } else if line.is_empty() {
             assert!(first_part);
             first_part = false;
         } else if let Some(caps) = msg.captures(line) {
@@ -273,24 +305,26 @@ fn parse_input(input_lines: &[String]) -> (SmartRegexMatcher, Vec<String>) {
 
 fn solve_part1(input_lines: &[String]) -> usize {
     let (mut matcher, msgs) = parse_input(input_lines);
-    matcher.set_debug();
     matcher.count_regex0_matches(&msgs)
 }
 
 fn solve_part2(input_lines: &[String]) -> usize {
     let (mut matcher, msgs) = parse_input(input_lines);
-    matcher.set_debug();
 
     // Additional rules:
     //     8: 42 | 42 8
     //     11: 42 31 | 42 11 31
     matcher.allow_loops();
-    matcher.add_regex(8, RegexCases::Union(42, 208));
-    matcher.add_regex(208, RegexCases::Concat(42, 8));
-    matcher.add_regex(11, RegexCases::Union(211, 411));
-    matcher.add_regex(211, RegexCases::Concat(42, 31));
-    matcher.add_regex(411, RegexCases::Concat(42, 611));
-    matcher.add_regex(611, RegexCases::Concat(11, 31));
+    let fresh1 = fresh_id(8, 1);
+    let fresh2 = fresh_id(11, 1);
+    let fresh3 = fresh_id(11, 2);
+    let fresh4 = fresh_id(11, 3);
+    matcher.add_regex(8, RegexCases::Union(42, fresh1));
+    matcher.add_regex(fresh1, RegexCases::Concat(42, 8));
+    matcher.add_regex(11, RegexCases::Union(fresh2, fresh3));
+    matcher.add_regex(fresh2, RegexCases::Concat(42, 31));
+    matcher.add_regex(fresh3, RegexCases::Concat(42, fresh4));
+    matcher.add_regex(fresh4, RegexCases::Concat(11, 31));
 
     matcher.count_regex0_matches(&msgs)
 }
@@ -327,7 +361,6 @@ mod tests {
                 .map(|s| s.to_string())
                 .collect();
             let (mut matcher, msgs) = parse_input(&lines);
-            matcher.set_debug();
             if self.loops {
                 matcher.allow_loops();
             }
@@ -483,6 +516,8 @@ mod tests {
 
 fn main() {
     let input_lines = file_to_vec("input/day19.txt");
-    println!("Part 1 Answer: {}", solve_part1(&input_lines));
-    println!("Part 2 Answer: {}", solve_part2(&input_lines));
+    let part1 = solve_part1(&input_lines);
+    let part2 = solve_part2(&input_lines);
+    println!("Part 1 Answer: {}", part1);
+    println!("Part 2 Answer: {}", part2);
 }
