@@ -66,10 +66,7 @@ use std::collections::{HashMap, HashSet};
 type RegexId = u16;
 const MAX_ID: RegexId = 200;
 fn base_id(id: u16) -> RegexId {
-    debug_assert!(
-        id < MAX_ID,
-        format!("ID {} too large: MAX_ID is {}", id, MAX_ID)
-    );
+    debug_assert!(id < MAX_ID, "ID {} too large: MAX_ID is {}", id, MAX_ID);
     id
 }
 fn fresh_id(id: u16, offset: u16) -> RegexId {

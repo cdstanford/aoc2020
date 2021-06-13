@@ -34,8 +34,7 @@ fn get_differences(joltages: &[usize]) -> (usize, usize) {
 // Part 2: count # of arrangements
 // Assumes joltages is sorted
 fn count_arrangements(joltages: &[usize]) -> usize {
-    let mut counts = Vec::new(); // # of arrangements ending in i
-    counts.push(1);
+    let mut counts = vec![1]; // # of arrangements ending in i
     for i in 1..joltages.len() {
         let mut new_count = 0;
         for j in 1..=i {

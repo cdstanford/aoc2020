@@ -17,10 +17,10 @@ fn seat_id(board_pass: &str) -> usize {
             'B' | 'R' => {
                 seat = 2 * seat + 1;
             }
-            _ => panic!(format!(
+            _ => panic!(
                 "invalid character {} in boarding pass: {}",
                 ch, board_pass
-            )),
+            ),
         };
     }
     seat
