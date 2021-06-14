@@ -36,8 +36,7 @@ const HEXCOORD_MIN: HexCoord = HexCoord(isize::MIN, isize::MIN);
 const HEXCOORD_MAX: HexCoord = HexCoord(isize::MAX, isize::MAX);
 
 fn agg_path(path: &[HexCoord]) -> HexCoord {
-    let result = path.iter().cloned().sum();
-    result
+    path.iter().cloned().sum()
 }
 
 // HexCoord iterators
@@ -117,12 +116,16 @@ impl HexGrid {
     fn count_neighbors(&self, coord: &HexCoord) -> usize {
         neighbors(coord).map(|c| self.grid.contains(&c)).filter(|&b| b).count()
     }
+    fn game_rule(&self, coord: &HexCoord) -> bool {
+        // Return whether a tile is black in the next iteration
+        let neighbors = self.count_neighbors(&coord);
+        neighbors == 2 || neighbors == 1 && self.grid.contains(&coord)
+    }
     fn step(&mut self) {
         let mut new_grid = Self::new();
         for coord in self.iter_coords() {
-            let neighbors = self.count_neighbors(&coord);
-            if neighbors == 2 || neighbors == 1 && self.grid.contains(&coord) {
-                new_grid.insert(coord)
+            if self.game_rule(&coord) {
+                new_grid.insert(coord);
             }
         }
         *self = new_grid;
